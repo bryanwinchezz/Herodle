@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herodle - O Jogo do Super-Herói do Dia</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Configuração do Tailwind para Modo Escuro e Fontes -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        correct: '#22c55e', // Verde para acertos
+                        partial: '#eab308', // Amarelo para aproximado/parcial
+                        incorrect: '#ef4444', // Vermelho para errado
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos adicionais para animações e scrollbar */
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 md:px-8 h-18 flex items-center justify-between py-3">
+            <div class="flex items-center gap-3">
+                <!-- Escudo de Logótipo -->
+                <div class="bg-gradient-to-tr from-brand-600 to-indigo-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-brand-500/20">
+                    <i data-lucide="shield" class="w-6 h-6 md:w-7 md:h-7 text-white"></i>
+                </div>
+                <div>
+                    <!-- Nome do site na mesma cor do gradiente do escudo -->
+                    <h1 class="text-2xl md:text-3xl font-black tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-tr from-brand-600 to-indigo-600">
+                        Herodle
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="flex items-center gap-1.5 md:gap-2">
+                <button id="btn-stats" class="p-2 md:p-2.5 hover:bg-slate-850 rounded-xl transition-colors text-slate-300 hover:text-white" title="Estatísticas">
+                    <i data-lucide="bar-chart-2" class="w-5 md:w-5.5 h-5 md:h-5.5"></i>
+                </button>
+                <button id="btn-how-to-play" class="p-2 md:p-2.5 hover:bg-slate-850 rounded-xl transition-colors text-slate-300 hover:text-white" title="Como Jogar">
+                    <i data-lucide="help-circle" class="w-5 md:w-5.5 h-5 md:h-5.5"></i>
+                </button>
+                <button id="btn-change-mode" class="flex items-center gap-1.5 px-3 py-1.5 md:py-2 bg-slate-900 hover:bg-slate-800 text-[10px] md:text-xs font-bold rounded-xl transition-all border border-slate-800 shadow-sm" title="Alternar Modo de Jogo">
+                    <span id="mode-badge" class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="mode-text" class="tracking-wide hidden sm:inline">Modo Diário</span>
+                    <span id="mode-text-mobile" class="tracking-wide sm:hidden">Diário</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content (Ajustado para max-w-6xl para visual incrível no Computador) -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 md:px-8 py-6 md:py-8 flex flex-col gap-6">
+
+        <!-- Banner de Carregamento Inicial -->
+        <div id="loading-screen" class="flex-grow flex flex-col items-center justify-center py-32">
+            <div class="relative w-16 h-16 mb-4">
+                <div class="absolute inset-0 rounded-full border-4 border-slate-850"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p class="text-slate-400 font-semibold animate-pulse text-sm tracking-wider">A recrutar base de dados de heróis...</p>
+        </div>
+
+        <!-- Conteúdo do Jogo (Oculto até carregar) -->
+        <div id="game-content" class="hidden flex flex-col gap-6 md:gap-8 animate-pop-in">
+            
+            <!-- Painel Superior de Informações -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4 md:p-6 shadow-md">
+                <!-- Modo & Descrição -->
+                <div class="flex flex-col justify-center">
+                    <div class="flex items-center gap-2">
+                        <span id="current-mode-indicator" class="text-[10px] md:text-xs font-extrabold uppercase tracking-wider px-2 md:px-2.5 py-0.5 md:py-1 bg-brand-500/10 text-brand-400 rounded-lg">Diário</span>
+                        <span id="game-day-title" class="text-slate-200 font-extrabold text-sm md:text-base">Desafio de Hoje</span>
+                    </div>
+                    <p id="game-subtitle" class="text-[11px] md:text-xs text-slate-400 mt-1">Todos jogam o mesmo personagem mundialmente.</p>
+                </div>
+
+                <!-- Seletor de Dias Passados -->
+                <div id="past-days-container" class="flex flex-col justify-center border-t md:border-t-0 md:border-x border-slate-800/60 py-3.5 md:py-0 md:px-6">
+                    <label for="select-game-date" class="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1 md:mb-1.5 flex items-center gap-1.5">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-brand-400"></i> Jogar Dias Passados
+                    </label>
+                    <select id="select-game-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 md:px-3 py-1.5 md:py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-brand-500 cursor-pointer">
+                        <!-- Gerado dinamicamente com as datas recentes -->
+                    </select>
+                </div>
+
+                <!-- Tempo Real e Palpites -->
+                <div class="flex items-center justify-between md:justify-end gap-6 md:gap-8 border-t md:border-t-0 border-slate-800/60 pt-3.5 md:pt-0">
+                    <div class="text-left md:text-right">
+                        <span class="text-[9px] md:text-[10px] text-slate-400 block uppercase font-bold tracking-widest">Próximo Herodle em</span>
+                        <span id="countdown-banner" class="text-sm md:text-base font-mono font-extrabold text-brand-400">00:00:00</span>
+                    </div>
+                    <div class="h-10 w-[1px] bg-slate-800 hidden md:block"></div>
+                    <div class="text-right">
+                        <span class="text-[9px] md:text-[10px] text-slate-400 block uppercase font-bold tracking-widest">Tentativas</span>
+                        <span id="counter-guesses" class="text-base md:text-lg font-extrabold text-slate-200">0 / 8</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões Rápidos e Dica Especial -->
+            <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                <span class="text-xs md:text-sm text-slate-400 text-center lg:text-left">Analisa os dados dos teus palpites para encontrares as pistas do herói misterioso.</span>
+                <button id="btn-reveal-hint" disabled class="w-full lg:w-auto px-5 py-2.5 md:py-3 bg-slate-900 text-slate-500 cursor-not-allowed text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-slate-850 disabled:opacity-50 disabled:pointer-events-none border border-slate-800/80 shadow-sm shrink-0">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-brand-400 shrink-0"></i>
+                    <span>Dica Especial (Disponível após 5 tentativas)</span>
+                </button>
+            </div>
+
+            <!-- Zona de Input / Pesquisa -->
+            <div class="relative max-w-2xl w-full mx-auto" id="search-container">
+                <div class="relative flex items-center">
+                    <div class="absolute left-4 md:left-5 text-slate-400">
+                        <i data-lucide="search" class="w-5 h-5 md:w-6 md:h-6"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="hero-input" 
+                        autocomplete="off"
+                        placeholder="Pesquise o seu herói ou vilão favorito..." 
+                        class="w-full bg-slate-900 border-2 border-slate-800 focus:border-brand-500 rounded-2xl py-3.5 md:py-4.5 pl-12 md:pl-14 pr-4 md:pr-5 text-slate-100 placeholder-slate-500 focus:outline-none transition-all shadow-xl text-base md:text-lg"
+                    />
+                </div>
+
+                <!-- Lista de Sugestões / Autocomplete (IMAGENS MUITO MAIORES para PC/Telemóvel) -->
+                <div id="autocomplete-list" class="absolute left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-h-80 md:max-h-96 overflow-y-auto hidden z-30 divide-y divide-slate-800/40">
+                    <!-- Gerado dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Área de Alerta / Erro -->
+            <div id="alert-box" class="hidden max-w-xl mx-auto bg-amber-500/10 border border-amber-500/30 text-amber-300 px-5 py-3.5 rounded-xl flex items-center gap-3 text-sm animate-pop-in">
+                <i data-lucide="alert-triangle" class="w-5.5 h-5.5 shrink-0"></i>
+                <span id="alert-message">Insira um palpite válido!</span>
+            </div>
+
+            <!-- Visualizador de Dica Escrita -->
+            <div id="hint-visualizer" class="hidden max-w-2xl mx-auto bg-gradient-to-r from-indigo-950/40 to-slate-900/60 border border-indigo-500/30 rounded-2xl p-4 md:p-5 flex items-start gap-4 animate-pop-in shadow-lg">
+                <div class="bg-indigo-500/10 p-3 rounded-xl text-indigo-400 shrink-0">
+                    <i data-lucide="info" class="w-6 h-6 md:w-7 md:h-7"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-black uppercase tracking-wider text-indigo-400 mb-1">Dica Secreta do Herodle</h3>
+                    <p id="hint-text-data" class="text-sm text-slate-300 leading-relaxed">
+                        <!-- Carregado via JS -->
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tabela Dinâmica de Comparações -->
+            <div class="flex flex-col gap-2">
+                <!-- Indicador de Arrastamento Lateral (Informativo apenas no telemóvel) -->
+                <div class="flex md:hidden items-center justify-center gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">
+                    <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
+                    <span>Desliza para o lado para ver atributos ⟷</span>
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/10 shadow-xl">
+                    <table class="w-full text-left border-collapse min-w-[780px] md:min-w-[840px]">
+                        <thead>
+                            <tr class="bg-slate-900/50 border-b border-slate-800/80 text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">
+                                <th class="py-3 md:py-4 px-4 md:px-6 text-center">Personagem</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">Gênero</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">Raça</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">Editora</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">Alinhamento</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">1ª Aparição</th>
+                                <th class="py-3 md:py-4 px-2 md:px-4 text-center">Atributos (Média)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guesses-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Linhas injetadas pelo jogo -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Estado Inicial de Vazio -->
+            <div id="empty-state" class="text-center py-16 md:py-20 text-slate-500 flex flex-col items-center justify-center gap-4">
+                <div class="p-4 md:p-5 rounded-full bg-slate-900 border border-slate-800 text-slate-400">
+                    <i data-lucide="swords" class="w-8 md:w-10 h-8 md:h-10"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-300 text-base md:text-lg">Nenhum palpite enviado ainda</h3>
+                    <p class="text-xs md:text-sm mt-1 max-w-md text-slate-500 mx-auto px-4">Escreve o nome de qualquer personagem para comparar as características com o herói oculto.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-6 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <p>&copy; 2026 Herodle. Desenvolvido com dados de super-heróis em Português.</p>
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i> API Aberta Utilizada</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: Como Jogar (Com scroll interno de segurança para telemóveis pequenos) -->
+    <div id="modal-how-to" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 md:p-6 shadow-2xl animate-pop-in relative max-h-[90vh] overflow-y-auto">
+            <button class="absolute top-4 right-4 p-1 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white" onclick="toggleModal('modal-how-to', false)">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-indigo-500/10 p-2 rounded-lg text-indigo-400">
+                    <i data-lucide="help-circle" class="w-5 h-5"></i>
+                </div>
+                <h2 class="text-lg font-bold text-slate-100">Como Jogar Herodle</h2>
+            </div>
+            
+            <div class="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed">
+                <p>O teu objetivo é adivinhar o **Super-Herói** ou **Vilão** oculto. Cada palpite revela pistas sobre as suas características corporais e editora!</p>
+                
+                <div class="space-y-2">
+                    <p class="font-semibold text-slate-100">Código de Cores das Pistas:</p>
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded bg-correct flex items-center justify-center text-[10px] font-bold text-white shrink-0">✓</span>
+                        <span><strong class="text-green-400">Verde:</strong> Corresponde exatamente ao herói misterioso.</span>
+                    </div>
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded bg-partial flex items-center justify-center text-[10px] font-bold text-white shrink-0">~</span>
+                        <span><strong class="text-amber-400">Amarelo / Setas:</strong> Próximo ou indica a direção:
+                            <br><span class="text-slate-400 text-xs">Ex: $\uparrow$ indica que o ano correto é superior (mais recente); $\downarrow$ indica que é inferior (mais antigo).</span>
+                        </span>
+                    </div>
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white shrink-0">✕</span>
+                        <span><strong class="text-slate-400">Cinza / Vermelho:</strong> Não corresponde ao herói procurado.</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800/80 text-[11px] text-slate-400">
+                    <strong>Dica de Texto:</strong> Após 5 tentativas frustradas, podes desbloquear uma dica de texto aleatória valiosa sobre o personagem!
+                </div>
+            </div>
+
+            <button class="w-full mt-5 bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded-xl transition-all text-xs md:text-sm" onclick="toggleModal('modal-how-to', false)">
+                Entendido, Jogar!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL COMPACTO: Estatísticas e Fim de Jogo (Otimizado contra cortes em telemóveis) -->
+    <div id="modal-stats" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xs md:max-w-sm w-full p-4 md:p-5 shadow-2xl animate-pop-in relative max-h-[92vh] overflow-y-auto">
+            <button class="absolute top-3.5 right-3.5 p-1 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white" onclick="toggleModal('modal-stats', false)">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <h2 id="stats-title" class="text-xs md:text-sm font-black text-center text-slate-400 uppercase tracking-widest mb-3">Estatísticas</h2>
+
+            <!-- Fim do Jogo: Resultado Visual MUITO MAIS COMPACTO -->
+            <div id="endgame-status-box" class="hidden mb-3 p-2 bg-slate-950/40 border border-slate-800 rounded-xl text-center flex flex-col items-center gap-1.5">
+                <div id="endgame-icon" class="w-8 h-8 rounded-full flex items-center justify-center">
+                    <!-- Preenchido dinamicamente -->
+                </div>
+                <div class="text-center">
+                    <h3 id="endgame-message" class="font-black text-sm">Resultado!</h3>
+                    <p id="endgame-hero-name" class="text-brand-400 font-extrabold text-xs md:text-sm"></p>
+                </div>
+                <!-- Imagem MAIOR no encerramento (Grande destaque e borda arredondada premium) -->
+                <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden border-2 border-brand-500/40 shadow-lg shadow-brand-500/10">
+                    <img id="endgame-hero-img" class="w-full h-full object-cover" src="" alt="Imagem do Herói">
+                </div>
+                <p id="endgame-hero-info" class="text-[9px] md:text-[10px] text-slate-400 font-medium"></p>
+            </div>
+
+            <!-- Grelha de Estatísticas Simplificada -->
+            <div class="grid grid-cols-4 gap-1 text-center mb-3">
+                <div class="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                    <span id="stat-played" class="block text-sm md:text-base font-black text-slate-100">0</span>
+                    <span class="text-[7px] md:text-[8px] uppercase tracking-wider text-slate-500 font-bold">Jogos</span>
+                </div>
+                <div class="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                    <span id="stat-win-rate" class="block text-sm md:text-base font-black text-slate-100">0%</span>
+                    <span class="text-[7px] md:text-[8px] uppercase tracking-wider text-slate-500 font-bold">Vitórias</span>
+                </div>
+                <div class="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                    <span id="stat-current-streak" class="block text-sm md:text-base font-black text-slate-100">0</span>
+                    <span class="text-[7px] md:text-[8px] uppercase tracking-wider text-slate-500 font-bold">Atual</span>
+                </div>
+                <div class="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                    <span id="stat-max-streak" class="block text-sm md:text-base font-black text-slate-100">0</span>
+                    <span class="text-[7px] md:text-[8px] uppercase tracking-wider text-slate-500 font-bold">Record</span>
+                </div>
+            </div>
+
+            <!-- Tempo para o próximo jogo -->
+            <div id="modal-timer-box" class="text-center p-2 bg-slate-950/60 rounded-xl border border-slate-850 mb-3">
+                <p class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Próximo Herodle em</p>
+                <div id="modal-countdown-timer" class="text-xs md:text-sm font-mono font-bold text-brand-400">00:00:00</div>
+            </div>
+
+            <!-- Botões de Ação Final -->
+            <div class="flex flex-col gap-1">
+                <button id="btn-share" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 text-[10px] md:text-[11px]">
+                    <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                    <span>Partilhar Pontuação</span>
+                </button>
+                <button id="btn-modal-action-play" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2 rounded-lg transition-all text-[10px] md:text-[11px] hidden">
+                    Jogar Novamente (Modo Treino)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Principal -->
+    <script>
+        const HERO_DATA_URL = 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/all.json';
+
+        // --- VARIÁVEIS DE ESTADO ---
+        let allHeroes = [];
+        let secretHero = null;
+        let guesses = [];
+        const maxGuesses = 8;
+        let isDailyMode = true; 
+        let isGameOver = false;
+        
+        // Data selecionada no momento (para simular dias passados no Modo Diário)
+        let activeGameDate = ""; 
+        let cachedHintText = ""; // Guarda a dica selecionada para esta rodada
+
+        // Estatísticas Gerais consolidada para o Modo Diário
+        let stats = {
+            played: 0,
+            wins: 0,
+            currentStreak: 0,
+            maxStreak: 0,
+            completedDates: [] // Lista de datas concluídas
+        };
+
+        const TRANSLATIONS = {
+            gender: {
+                "Male": "Masculino",
+                "Female": "Feminino",
+                "Neutral": "Neutro",
+                "-": "Indefinido"
+            },
+            alignment: {
+                "good": "Herói",
+                "bad": "Vilão",
+                "neutral": "Neutro",
+                "-": "Neutro"
+            },
+            publisher: {
+                "Marvel Comics": "Marvel",
+                "DC Comics": "DC Comics",
+                "Dark Horse Comics": "Dark Horse",
+                "NBC - Heroes": "NBC Heroes",
+                "George Lucas": "Lucasfilm",
+                "Star Trek": "Star Trek",
+                "Syfy": "Syfy",
+                "South Park": "South Park",
+                "Lego": "LEGO",
+                "Image Comics": "Image",
+                "Hasbro": "Hasbro",
+                "Wildstorm": "Wildstorm",
+                "IDW Publishing": "IDW",
+                "Shueisha": "Shueisha",
+                "Sony Pictures": "Sony"
+            }
+        };
+
+        // --- INICIALIZAÇÃO ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            loadStats();
+
+            // Configura a data ativa inicial como a data de hoje
+            activeGameDate = getTodayString();
+
+            try {
+                const response = await fetch(HERO_DATA_URL);
+                if (!response.ok) throw new Error("Falha na ligação à API");
+                const rawData = await response.json();
+                
+                // Filtrar apenas heróis válidos com imagem pequena e dados biograficos
+                allHeroes = rawData.filter(h => h.name && h.biography && h.images && h.images.sm);
+                
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('game-content').classList.remove('hidden');
+
+                // Gerar a lista de datas para o seletor de dias passados
+                populatePastDaysSelector();
+
+                // Inicializar o jogo principal
+                initGame();
+
+                // Inicializar contagem regressiva em tempo real no topo
+                startDailyCountdown();
+
+            } catch (error) {
+                console.error("Erro ao inicializar base de dados:", error);
+                document.getElementById('loading-screen').innerHTML = `
+                    <div class="text-center text-red-400 p-6">
+                        <i data-lucide="alert-octagon" class="w-12 h-12 mx-auto mb-3"></i>
+                        <p class="font-bold">Erro ao ligar ao servidor de personagens.</p>
+                        <p class="text-xs text-slate-500 mt-2">Por favor, recarregue a página.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+
+            setupEventListeners();
+        });
+
+        // --- LÓGICA DO JOGO ---
+
+        function initGame() {
+            isGameOver = false;
+            guesses = [];
+            cachedHintText = ""; // Limpar a dica antiga
+            
+            // Limpar todos os elementos e inputs visuais
+            document.getElementById('hero-input').value = "";
+            document.getElementById('hero-input').disabled = false;
+            document.getElementById('guesses-tbody').innerHTML = "";
+            document.getElementById('empty-state').classList.remove('hidden');
+            document.getElementById('hint-visualizer').classList.add('hidden');
+            
+            // Resetar botão de dica textual para 5 tentativas
+            const btnRevealHint = document.getElementById('btn-reveal-hint');
+            btnRevealHint.disabled = true;
+            btnRevealHint.className = "w-full lg:w-auto px-5 py-2.5 md:py-3 bg-slate-900 text-slate-500 cursor-not-allowed text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-slate-850 disabled:opacity-50 disabled:pointer-events-none border border-slate-800/80 shadow-sm shrink-0";
+            btnRevealHint.querySelector('span').innerText = "Dica Especial (Disponível após 5 tentativas)";
+
+            updateGuessesCounter();
+
+            if (isDailyMode) {
+                // Seleciona o personagem com base na data ativa
+                secretHero = selectHeroByDate(activeGameDate);
+                
+                document.getElementById('current-mode-indicator').innerText = "Diário";
+                document.getElementById('current-mode-indicator').className = "text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-brand-500/10 text-brand-400 rounded-md";
+                document.getElementById('past-days-container').classList.remove('hidden');
+
+                const displayDate = formatDateToPT(activeGameDate);
+                if (activeGameDate === getTodayString()) {
+                    document.getElementById('game-day-title').innerText = "Desafio de Hoje";
+                    document.getElementById('game-subtitle').innerText = "Todos jogam o mesmo personagem.";
+                } else {
+                    document.getElementById('game-day-title').innerText = `Dia ${displayDate}`;
+                    document.getElementById('game-subtitle').innerText = "Histórico de desafio passado!";
+                }
+
+                // Sincronizar o seletor com a data atual ativa
+                document.getElementById('select-game-date').value = activeGameDate;
+
+                // Verificar se esta data específica já foi concluída
+                if (stats.completedDates.includes(activeGameDate)) {
+                    revealFinishedDaily();
+                }
+            } else {
+                // Modo Treino - herói aleatório isolado
+                const randIndex = Math.floor(Math.random() * allHeroes.length);
+                secretHero = allHeroes[randIndex];
+                
+                document.getElementById('current-mode-indicator').innerText = "Treino";
+                document.getElementById('current-mode-indicator').className = "text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md";
+                document.getElementById('game-day-title').innerText = "Treino Livre";
+                document.getElementById('game-subtitle').innerText = "Modo de treino infinito. Não conta para o recorde!";
+                document.getElementById('past-days-container').classList.add('hidden');
+            }
+
+            // Preparar a dica aleatória para esta rodada
+            generateRandomHintText();
+        }
+
+        function selectHeroByDate(dateStr) {
+            let hash = 0;
+            for (let i = 0; i < dateStr.length; i++) {
+                hash = dateStr.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % allHeroes.length;
+            return allHeroes[index];
+        }
+
+        function getTodayString() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        // Gera as datas dos últimos 7 dias para jogar de forma retroativa
+        function populatePastDaysSelector() {
+            const select = document.getElementById('select-game-date');
+            if (!select) return;
+            select.innerHTML = "";
+
+            const today = new Date();
+            for (let i = 0; i < 7; i++) {
+                const pastDate = new Date();
+                pastDate.setDate(today.getDate() - i);
+                
+                const yyyy = pastDate.getFullYear();
+                const mm = String(pastDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(pastDate.getDate()).padStart(2, '0');
+                const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                const option = document.createElement('option');
+                option.value = dateStr;
+
+                const isDone = stats.completedDates.includes(dateStr);
+                const prefix = isDone ? "✓ " : "⏳ ";
+                const label = i === 0 ? "Hoje (Desafio Principal)" : formatDateToPT(dateStr);
+                
+                option.innerText = `${prefix}${label}`;
+                select.appendChild(option);
+            }
+        }
+
+        function formatDateToPT(dateStr) {
+            const parts = dateStr.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function submitGuess(hero) {
+            if (isGameOver) return;
+
+            if (guesses.some(g => g.id === hero.id)) {
+                showAlert("Já tentaste esse personagem!");
+                return;
+            }
+
+            document.getElementById('empty-state').classList.add('hidden');
+
+            guesses.push(hero);
+            updateGuessesCounter();
+
+            addGuessRowToTable(hero);
+
+            // Desbloquear dica de texto após 5 palpites errados
+            if (guesses.length >= 5) {
+                const btnRevealHint = document.getElementById('btn-reveal-hint');
+                btnRevealHint.disabled = false;
+                btnRevealHint.className = "w-full lg:w-auto px-5 py-2.5 md:py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white cursor-pointer text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:from-brand-500 hover:to-indigo-500 shadow-lg shadow-brand-500/20 shrink-0";
+                btnRevealHint.querySelector('span').innerText = "Ver Dica de Origem";
+            }
+
+            if (hero.id === secretHero.id) {
+                handleEndGame(true);
+            } else if (guesses.length >= maxGuesses) {
+                handleEndGame(false);
+            }
+
+            document.getElementById('hero-input').value = "";
+            document.getElementById('autocomplete-list').classList.add('hidden');
+        }
+
+        // Tabela com imagens adaptativas com base na largura do ecrã (perfeito em PC e telemóvel)
+        function addGuessRowToTable(guessedHero) {
+            const tbody = document.getElementById('guesses-tbody');
+            const row = document.createElement('tr');
+            row.className = "hover:bg-slate-900/20 transition-colors animate-pop-in";
+
+            // 1. Avatar de Destaque Adaptável e Nome
+            const nameTd = document.createElement('td');
+            nameTd.className = "py-3 md:py-4 px-4 md:px-6 flex items-center gap-3.5 md:gap-4 shrink-0";
+            nameTd.innerHTML = `
+                <div class="w-14 h-14 md:w-22 md:h-22 rounded-xl md:rounded-2xl overflow-hidden border-2 border-slate-700 shrink-0 bg-slate-950 shadow-md">
+                    <img class="w-full h-full object-cover" src="${guessedHero.images.sm}" alt="${guessedHero.name}">
+                </div>
+                <div class="min-w-[100px] md:min-w-[140px]">
+                    <span class="font-extrabold text-slate-100 block text-xs md:text-base tracking-wide truncate">${guessedHero.name}</span>
+                    <span class="text-[10px] md:text-xs text-slate-400 font-medium truncate block">${guessedHero.biography.fullName || 'Sem Alter-Ego'}</span>
+                </div>
+            `;
+            row.appendChild(nameTd);
+
+            // 2. Gênero
+            const genderVal = guessedHero.appearance.gender;
+            const targetGender = secretHero.appearance.gender;
+            row.appendChild(createComparisonCell(
+                translateText('gender', genderVal), 
+                genderVal === targetGender ? 'correct' : 'incorrect'
+            ));
+
+            // 3. Raça
+            const raceVal = guessedHero.appearance.race || "Desconhecida";
+            const targetRace = secretHero.appearance.race || "Desconhecida";
+            row.appendChild(createComparisonCell(
+                raceVal, 
+                raceVal === targetRace ? 'correct' : 'incorrect'
+            ));
+
+            // 5. Editora
+            const pubVal = guessedHero.biography.publisher || "Outra";
+            const targetPub = secretHero.biography.publisher || "Outra";
+            row.appendChild(createComparisonCell(
+                translateText('publisher', pubVal), 
+                pubVal === targetPub ? 'correct' : 'incorrect'
+            ));
+
+            // 6. Alinhamento
+            const alignVal = guessedHero.biography.alignment || "-";
+            const targetAlign = secretHero.biography.alignment || "-";
+            row.appendChild(createComparisonCell(
+                translateText('alignment', alignVal), 
+                alignVal === targetAlign ? 'correct' : 'incorrect'
+            ));
+
+            // 7. Ano de Estreia
+            const yearVal = parseFirstAppearanceYear(guessedHero.biography.firstAppearance);
+            const targetYear = parseFirstAppearanceYear(secretHero.biography.firstAppearance);
+            let yearStatus = 'incorrect';
+            let yearDirection = '';
+
+            if (yearVal === targetYear) {
+                yearStatus = 'correct';
+            } else if (Math.abs(yearVal - targetYear) <= 5 && yearVal !== 0 && targetYear !== 0) {
+                yearStatus = 'partial';
+                yearDirection = yearVal < targetYear ? ' ⇈' : ' ⇊';
+            } else if (yearVal !== 0 && targetYear !== 0) {
+                yearDirection = yearVal < targetYear ? ' ↑' : ' ↓';
+            }
+
+            const yearLabel = yearVal === 0 ? "N/A" : `${yearVal}${yearDirection}`;
+            row.appendChild(createComparisonCell(yearLabel, yearStatus));
+
+            // 8. Atributos (Média de Poder)
+            const guessedPower = calculatePowerAverage(guessedHero.powerstats);
+            const targetPower = calculatePowerAverage(secretHero.powerstats);
+            let powerStatus = 'incorrect';
+            let powerDirection = '';
+
+            if (guessedPower === targetPower) {
+                powerStatus = 'correct';
+            } else if (Math.abs(guessedPower - targetPower) <= 10) {
+                powerStatus = 'partial';
+                powerDirection = guessedPower < targetPower ? ' ⇈' : ' ⇊';
+            } else {
+                powerDirection = guessedPower < targetPower ? ' ↑' : ' ↓';
+            }
+            
+            const powerLabel = `${Math.round(guessedPower)}${powerDirection}`;
+            row.appendChild(createComparisonCell(powerLabel, powerStatus));
+
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        function createComparisonCell(text, status) {
+            const td = document.createElement('td');
+            td.className = "py-3 md:py-4 px-2 md:px-4 text-center text-[11px] md:text-xs font-semibold";
+            
+            let bgClass = "bg-slate-800 text-slate-400";
+            if (status === 'correct') {
+                bgClass = "bg-correct text-white shadow-md font-bold";
+            } else if (status === 'partial') {
+                bgClass = "bg-partial text-slate-950 font-bold";
+            } else if (status === 'incorrect') {
+                bgClass = "bg-slate-900/60 text-slate-500 border border-slate-800/40";
+            }
+
+            td.innerHTML = `
+                <div class="px-2 py-2.5 md:py-3 rounded-xl ${bgClass} transition-all tracking-wide truncate min-w-[85px] md:min-w-[120px] max-w-[130px] mx-auto uppercase">
+                    ${text}
+                </div>
+            `;
+            return td;
+        }
+
+        // --- INTERPRETAÇÃO DE DADOS ---
+
+        function parseFirstAppearanceYear(str) {
+            if (!str || str === "-") return 0;
+            const match = str.match(/\b(19|20)\d{2}\b/);
+            if (match) return parseInt(match[0]);
+            const anyYear = str.match(/\b\d{4}\b/);
+            if (anyYear) return parseInt(anyYear[0]);
+            return 0;
+        }
+
+        // Média simples das estatísticas de combate e biologia
+        function calculatePowerAverage(stats) {
+            if (!stats) return 0;
+            const values = [
+                stats.intelligence || 0,
+                stats.strength || 0,
+                stats.speed || 0,
+                stats.durability || 0,
+                stats.power || 0,
+                stats.combat || 0
+            ];
+            const sum = values.reduce((a, b) => a + b, 0);
+            return sum / 6;
+        }
+
+        function translateText(category, key) {
+            if (TRANSLATIONS[category] && TRANSLATIONS[category][key]) {
+                return TRANSLATIONS[category][key];
+            }
+            return key;
+        }
+
+        function updateGuessesCounter() {
+            document.getElementById('counter-guesses').innerText = `${guesses.length} / ${maxGuesses}`;
+        }
+
+        function showAlert(msg) {
+            const box = document.getElementById('alert-box');
+            document.getElementById('alert-message').innerText = msg;
+            box.classList.remove('hidden');
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 3500);
+        }
+
+        // --- SISTEMA DE DICAS COMPLETAMENTE ALEATÓRIO ---
+
+        function generateRandomHintText() {
+            if (!secretHero) {
+                cachedHintText = "Nenhuma dica disponível para este personagem.";
+                return;
+            }
+
+            const hints = [];
+            
+            // 1. Dica de Alter-ego
+            if (secretHero.biography.fullName && secretHero.biography.fullName !== "-") {
+                hints.push(`O alter-ego ou nome verdadeiro de nascimento deste personagem misterioso é <strong>"${secretHero.biography.fullName}"</strong>.`);
+            }
+
+            // 2. Dica de Local de Nascimento
+            if (secretHero.biography.placeOfBirth && secretHero.biography.placeOfBirth !== "-") {
+                hints.push(`A origem ou o local onde este herói nasceu é listado nas histórias como <strong>"${secretHero.biography.placeOfBirth}"</strong>.`);
+            }
+
+            // 3. Dica de Primeira Aparição
+            if (secretHero.biography.firstAppearance && secretHero.biography.firstAppearance !== "-") {
+                hints.push(`A primeira aparição oficial deste personagem nos quadradinhos aconteceu em: <strong>"${secretHero.biography.firstAppearance}"</strong>.`);
+            }
+
+            // 4. Dica de Aparência Física (Cabelo e Olhos)
+            const hair = secretHero.appearance.hairColor || "-";
+            const eyes = secretHero.appearance.eyeColor || "-";
+            if (hair !== "-" || eyes !== "-") {
+                let physicalDesc = "O herói misterioso possui ";
+                if (eyes !== "-") physicalDesc += `olhos de cor <strong>"${eyes.toLowerCase()}"</strong>`;
+                if (hair !== "-" && hair.toLowerCase() !== "no hair") {
+                    if (eyes !== "-") physicalDesc += " e ";
+                    physicalDesc += `cabelo de cor <strong>"${hair.toLowerCase()}"</strong>`;
+                }
+                hints.push(physicalDesc + ".");
+            }
+
+            // 5. Dica de Universo / Editora
+            if (secretHero.biography.publisher) {
+                hints.push(`Este personagem é muito conhecido por atuar nas histórias publicadas originalmente pela editora <strong>"${secretHero.biography.publisher}"</strong>.`);
+            }
+
+            // Se nenhum critério for encontrado, fornecer um texto padrão seguro
+            if (hints.length === 0) {
+                hints.push(`O personagem misterioso trabalha com o alinhamento de <strong>"${translateText('alignment', secretHero.biography.alignment)}"</strong> no seu universo principal.`);
+            }
+
+            const randomIndex = Math.floor(Math.random() * hints.length);
+            cachedHintText = hints[randomIndex];
+        }
+
+        // --- EVENTOS DE FIM DE JOGO ---
+
+        function handleEndGame(isWin) {
+            isGameOver = true;
+            document.getElementById('hero-input').disabled = true;
+
+            // Se for Modo Diário, atualiza as estatísticas diárias oficiais
+            if (isDailyMode) {
+                if (!stats.completedDates.includes(activeGameDate)) {
+                    stats.played += 1;
+                    if (isWin) {
+                        stats.wins += 1;
+                        stats.currentStreak += 1;
+                        if (stats.currentStreak > stats.maxStreak) {
+                            stats.maxStreak = stats.currentStreak;
+                        }
+                    } else {
+                        stats.currentStreak = 0;
+                    }
+                    stats.completedDates.push(activeGameDate);
+                    saveStats();
+                    populatePastDaysSelector(); // Atualizar o seletor com visto
+                }
+            }
+
+            setTimeout(() => {
+                showEndgameModal(isWin);
+            }, 1000);
+        }
+
+        function showEndgameModal(isWin) {
+            const statusBox = document.getElementById('endgame-status-box');
+            const iconBox = document.getElementById('endgame-icon');
+            const msgTitle = document.getElementById('endgame-message');
+            const heroNameBox = document.getElementById('endgame-hero-name');
+            const heroImgBox = document.getElementById('endgame-hero-img');
+            const heroInfoBox = document.getElementById('endgame-hero-info');
+
+            statusBox.classList.remove('hidden');
+
+            if (isWin) {
+                iconBox.className = "w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center";
+                iconBox.innerHTML = `<i data-lucide="trophy" class="w-4 h-4"></i>`;
+                msgTitle.innerText = "Parabéns!";
+                msgTitle.className = "font-black text-sm text-emerald-400";
+            } else {
+                iconBox.className = "w-8 h-8 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center";
+                iconBox.innerHTML = `<i data-lucide="skull" class="w-4 h-4"></i>`;
+                msgTitle.innerText = "Esgotado!";
+                msgTitle.className = "font-black text-sm text-red-400";
+            }
+
+            heroNameBox.innerText = secretHero.name;
+            heroImgBox.src = secretHero.images.sm;
+            heroInfoBox.innerText = `Editora: ${secretHero.biography.publisher || 'Outra'} | Estreia: ${parseFirstAppearanceYear(secretHero.biography.firstAppearance) || 'Desconhecida'}`;
+
+            const btnPlayAgain = document.getElementById('btn-modal-action-play');
+            const modalTimerBox = document.getElementById('modal-timer-box');
+
+            if (isDailyMode) {
+                btnPlayAgain.classList.add('hidden');
+                modalTimerBox.classList.remove('hidden');
+            } else {
+                btnPlayAgain.classList.remove('hidden');
+                modalTimerBox.classList.add('hidden');
+            }
+
+            updateStatsUI();
+            toggleModal('modal-stats', true);
+            lucide.createIcons();
+        }
+
+        function revealFinishedDaily() {
+            isGameOver = true;
+            document.getElementById('hero-input').disabled = true;
+            
+            addGuessRowToTable(secretHero);
+            document.getElementById('empty-state').classList.add('hidden');
+            
+            setTimeout(() => {
+                showEndgameModal(true);
+            }, 800);
+        }
+
+        // --- CONTAGEM REGRESSIVA DIÁRIA ---
+        let countdownInterval;
+        function startDailyCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            const bannerTimer = document.getElementById('countdown-banner');
+            const modalTimer = document.getElementById('modal-countdown-timer');
+
+            function updateTime() {
+                const now = new Date();
+                const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                const diff = tomorrow - now;
+
+                if (diff <= 0) {
+                    clearInterval(countdownInterval);
+                    location.reload();
+                    return;
+                }
+
+                const hrs = String(Math.floor(diff / 1000 / 60 / 60)).padStart(2, '0');
+                const mins = String(Math.floor((diff / 1000 / 60) % 60)).padStart(2, '0');
+                const secs = String(Math.floor((diff / 1000) % 60)).padStart(2, '0');
+
+                const timeStr = `${hrs}:${mins}:${secs}`;
+                if (bannerTimer) bannerTimer.innerText = timeStr;
+                if (modalTimer) modalTimer.innerText = timeStr;
+            }
+
+            updateTime();
+            countdownInterval = setInterval(updateTime, 1000);
+        }
+
+        // --- ESTATÍSTICAS LOCAIS ---
+
+        function loadStats() {
+            const saved = localStorage.getItem('herodle_stats_v2');
+            if (saved) {
+                stats = JSON.parse(saved);
+                if (!stats.completedDates) stats.completedDates = [];
+            }
+        }
+
+        function saveStats() {
+            localStorage.setItem('herodle_stats_v2', JSON.stringify(stats));
+        }
+
+        function updateStatsUI() {
+            document.getElementById('stat-played').innerText = stats.played;
+            const rate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0;
+            document.getElementById('stat-win-rate').innerText = `${rate}%`;
+            document.getElementById('stat-current-streak').innerText = stats.currentStreak;
+            document.getElementById('stat-max-streak').innerText = stats.maxStreak;
+        }
+
+        // --- EVENTOS E PESQUISA AUTOCOMPLETE ---
+
+        function setupEventListeners() {
+            const heroInput = document.getElementById('hero-input');
+            const autocompleteList = document.getElementById('autocomplete-list');
+
+            heroInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                
+                if (query.length < 2) {
+                    autocompleteList.classList.add('hidden');
+                    return;
+                }
+
+                const matches = allHeroes.filter(h => 
+                    h.name.toLowerCase().includes(query) || 
+                    (h.biography.fullName && h.biography.fullName.toLowerCase().includes(query))
+                ).slice(0, 5); 
+
+                if (matches.length === 0) {
+                    autocompleteList.classList.add('hidden');
+                    return;
+                }
+
+                renderAutocomplete(matches);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!document.getElementById('search-container').contains(e.target)) {
+                    autocompleteList.classList.add('hidden');
+                }
+            });
+
+            // Seletor de dias passados
+            document.getElementById('select-game-date').addEventListener('change', (e) => {
+                if (!isDailyMode) return;
+                activeGameDate = e.target.value;
+                initGame();
+            });
+
+            // Revelar Dica Secreta Aleatória (a partir da 5ª tentativa)
+            document.getElementById('btn-reveal-hint').addEventListener('click', () => {
+                if (guesses.length < 5) return;
+
+                const hintVisualizer = document.getElementById('hint-visualizer');
+                const hintTextData = document.getElementById('hint-text-data');
+                
+                hintTextData.innerHTML = cachedHintText;
+                hintVisualizer.classList.toggle('hidden');
+
+                const btnRevealHint = document.getElementById('btn-reveal-hint');
+                if (hintVisualizer.classList.contains('hidden')) {
+                    btnRevealHint.querySelector('span').innerText = "Ver Dica de Origem";
+                } else {
+                    btnRevealHint.querySelector('span').innerText = "Ocultar Dica de Origem";
+                }
+            });
+
+            // Botão Estatísticas
+            document.getElementById('btn-stats').addEventListener('click', () => {
+                updateStatsUI();
+                document.getElementById('endgame-status-box').classList.add('hidden');
+                document.getElementById('btn-modal-action-play').classList.add('hidden');
+                document.getElementById('modal-timer-box').classList.remove('hidden');
+                toggleModal('modal-stats', true);
+            });
+
+            document.getElementById('btn-how-to-play').addEventListener('click', () => {
+                toggleModal('modal-how-to', true);
+            });
+
+            // Alternador de modo (Diário vs Treino)
+            document.getElementById('btn-change-mode').addEventListener('click', () => {
+                isDailyMode = !isDailyMode;
+                
+                const badge = document.getElementById('mode-badge');
+                const text = document.getElementById('mode-text');
+                const textMobile = document.getElementById('mode-text-mobile');
+
+                if (isDailyMode) {
+                    badge.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                    text.innerText = "Modo Diário";
+                    textMobile.innerText = "Diário";
+                    activeGameDate = document.getElementById('select-game-date').value || getTodayString();
+                } else {
+                    badge.className = "w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse";
+                    text.innerText = "Modo Treino";
+                    textMobile.innerText = "Treino";
+                }
+
+                initGame();
+            });
+
+            document.getElementById('btn-share').addEventListener('click', () => {
+                const textToCopy = generateShareText();
+                
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showAlert("Resultados copiados! Partilha com os teus amigos.");
+                } catch (err) {
+                    showAlert("Erro ao copiar automaticamente os resultados.");
+                }
+                document.body.removeChild(textArea);
+            });
+
+            document.getElementById('btn-modal-action-play').addEventListener('click', () => {
+                toggleModal('modal-stats', false);
+                initGame();
+            });
+        }
+
+        // Sugestões inteligentes com imagens fluidas (Grandes e bonitas em qualquer ecrã)
+        function renderAutocomplete(heroesList) {
+            const list = document.getElementById('autocomplete-list');
+            list.innerHTML = "";
+            list.classList.remove('hidden');
+
+            heroesList.forEach(hero => {
+                const item = document.createElement('div');
+                item.className = "flex items-center gap-4 md:gap-5 px-4 md:px-5 py-3 md:py-4 hover:bg-slate-800 cursor-pointer transition-colors text-left";
+                item.innerHTML = `
+                    <div class="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden border border-slate-700 shrink-0 bg-slate-950 shadow-md">
+                        <img class="w-full h-full object-cover" src="${hero.images.sm}" alt="${hero.name}">
+                    </div>
+                    <div>
+                        <strong class="text-slate-100 text-sm md:text-base block tracking-wide">${hero.name}</strong>
+                        <span class="text-xs text-slate-400 font-medium">${hero.biography.publisher || 'Outra'}</span>
+                    </div>
+                `;
+                item.addEventListener('click', () => {
+                    submitGuess(hero);
+                });
+                list.appendChild(item);
+            });
+        }
+
+        function toggleModal(id, show) {
+            const modal = document.getElementById(id);
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function generateShareText() {
+            let resultSquares = "";
+            guesses.forEach(g => {
+                resultSquares += (g.appearance.gender === secretHero.appearance.gender) ? "🟩" : "🟥";
+                resultSquares += ((g.appearance.race || "x") === (secretHero.appearance.race || "x")) ? "🟩" : "🟥";
+                resultSquares += ((g.biography.publisher || "x") === (secretHero.biography.publisher || "x")) ? "🟩" : "🟥";
+                resultSquares += ((g.biography.alignment || "x") === (secretHero.biography.alignment || "x")) ? "🟩" : "🟥";
+                
+                const yG = parseFirstAppearanceYear(g.biography.firstAppearance);
+                const yS = parseFirstAppearanceYear(secretHero.biography.firstAppearance);
+                if (yG === yS) resultSquares += "🟩";
+                else if (Math.abs(yG - yS) <= 5) resultSquares += "🟨";
+                else resultSquares += "⬛";
+
+                resultSquares += "\n";
+            });
+
+            const modeLabel = isDailyMode ? `Diário (${formatDateToPT(activeGameDate)})` : "Modo Treino";
+            const won = guesses.some(g => g.id === secretHero.id);
+            const attempts = won ? guesses.length : "X";
+
+            return `Herodle - ${modeLabel} ${attempts}/${maxGuesses}\n\n${resultSquares}Adivinha o herói do dia em Herodle!`;
+        }
+    </script>
+</body>
+</html>
